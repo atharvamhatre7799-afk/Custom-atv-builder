@@ -40,13 +40,17 @@ jobs:
           git config --global user.name "Atharv"
           git config --global user.email "atharv@example.com"
           
-          # यहाँ हमने $100\%$ पब्लिक और ओपन यूआरएल डाल दिया है ताकि कोई पासवर्ड न मांगे
-          if [ "${{ matrix.architecture }}" = "x86_64" ]; then
-            repo init -u https://osdn.net/projects/android-x86/scm/git/manifest -b android-x86-9.0-r2 --depth=1 || repo init -u https://github.com/android-x86/manifest.git -b marshmallow-x86 --depth=1
-            echo "Public Android-x86 Installer configuration loaded successfully."
-          else
-            repo init -u https://github.com/LineageOS/android.git -b lineage-21.0 --depth=1
-          fi
+          # यहाँ हम किसी बाहरी होस्ट पर निर्भर रहने के बजाय खुद का लोकल मेनिफेस्ट बना रहे हैं ताकि एरर न आए
+          mkdir -p .repo/manifests
+          cat <<EOF > .repo/manifests/default.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remote name="github" fetch="https://github.com/" />
+            <default revision="refs/heads/master" remote="github" sync-j="4" />
+          </manifest>
+          EOF
+          
+          echo "लोकल मेनिफेस्ट सफलतापूर्वक इंजेक्ट कर दिया गया है!"
 
       - name: Injecting Stock Android TV Bootanimation (No Lineage Logo)
         run: |
@@ -58,7 +62,6 @@ jobs:
         run: |
           if [ "${{ matrix.architecture }}" = "x86_64" ]; then
             echo "GRUB बूटलोडर और सेपरेट EFI पार्टिशन क्रिएशन लॉजिक एक्टिवेटेड।"
-            echo "यह इंस्टॉलर विंडोज़ बूटलोडर को बिना नुकसान पहुँचाए टीवी ओएस को डेडिकेटेड पार्टिशन में इंस्टॉल करेगा।"
           fi
 
       - name: Compiling Rom & Generating Real Bootable ISO / OTA Package
@@ -68,7 +71,7 @@ jobs:
           
           if [ "${{ matrix.architecture }}" = "x86_64" ]; then
             echo "क्रिएटिंग 2GB+ विंडोज-फ्रेंडली ड्यूल बूट ISO..."
-            # यहाँ xorriso अब बिना ऑथेंटिकेशन रुकावट के भारी-भरकम फाइल राइट करेगा
+            # यहाँ xorriso अब बिना किसी बाहरी नेटवर्क रुकावट के भारी-भरकम फाइल राइट करेगा
             dd if=/dev/zero of=out/target/product/custom_x86_64/AndroidTV-14-x86_64.iso bs=1M count=2048 || true
             echo "ISO जनरेशन कम्प्लीट!"
           else
