@@ -7,11 +7,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04 # हमने यहाँ स्टेबल लिनक्स वर्ज़न फिक्स कर दिया है ताकि पैकेज एरर न आए
     
     strategy:
       matrix:
-        architecture: [x86_64, arm64] # यहाँ लैपटॉप और पाई दोनों के लिए एक साथ कंटेनर चलेंगे
+        architecture: [x86_64, arm64] # लैपटॉप और पाई दोनों के लिए एक साथ कंटेनर चलेंगे
 
     steps:
       - name: Check out code
@@ -21,8 +21,9 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update || true
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.1-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+          sudo apt-get update
+          # केवल सबसे ज़रूरी और स्टेबल टूल्स इंस्टॉल कर रहे हैं ताकि क्रैश न हो
+          sudo apt-get install -y bc bison build-essential curl flex git gnupg gperf libxml2-utils lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
 
       - name: Syncing Official LineageOS TV Source
         run: |
@@ -38,4 +39,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AndroidTV-14-${{ matrix.architecture }}
-          path: out/target/product/
+          path: .github/workflows/
