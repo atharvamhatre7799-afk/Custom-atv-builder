@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     
     strategy:
+      fail-fast: false # अगर एक फेल भी हो, तो दूसरा कंटेनर कैंसल नहीं होगा, पूरा चलेगा!
       matrix:
         architecture: [x86_64, arm64]
 
@@ -28,7 +29,8 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get update || true
-          sudo apt-get install -y bc bison build-essential curl flex git gnupg gperf libxml2-utils lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libncurses5-dev squashfs-tools tboot grub-common grub-pc-bin xorriso microcom firmware-linux-nonfree
+          # यहाँ से हमने एरर देने वाले पैकेज को हटाकर स्टेबल टूल्स रखे हैं
+          sudo apt-get install -y bc bison build-essential curl flex git gnupg gperf libxml2-utils lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libncurses5-dev squashfs-tools tboot grub-common grub-pc-bin xorriso microcom linux-firmware
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
@@ -61,11 +63,10 @@ jobs:
           mkdir -p kernel/drivers/net/wireless/
           mkdir -p out/target/product/custom_x86_64/system/lib/firmware/
           
-          # यहाँ कर्नल को निर्देश दिया जा रहा है कि वह Intel, Realtek और Broadcom वाई-फाई चिप्स को सपोर्ट करे
           echo "CONFIG_RTL8821CE=m" >> kernel/drivers/net/wireless/Kconfig
           echo "CONFIG_IWLWIFI=m" >> kernel/drivers/net/wireless/Kconfig
           
-          # ग्राफिक्स के लिए Mesa 3D प्री-सेटअप लोड करना
+          mkdir -p out/target/product/custom_x86_64/
           echo "BOARD_GPU_DRIVERS := amdgpu radeon intel i965 iris" >> out/target/product/custom_x86_64/BoardConfig.mk
 
       - name: Injecting Safe Dual-Boot Partition Installer (Windows Protected)
@@ -81,7 +82,6 @@ jobs:
           
           if [ "${{ matrix.architecture }}" = "x86_64" ]; then
             echo "ड्राइवर्स और कस्टमाइज्ड पार्टिशन मैनेजर के साथ 2GB+ ISO जनरेट की जा रही है..."
-            # xorriso टूल्स कर्नल, बूट इमेज और सिस्टम फाइल्स को कंबाइन कर रहे हैं
             dd if=/dev/zero of=out/target/product/custom_x86_64/AndroidTV-14-x86_64.iso bs=1M count=2048 || true
             echo "ISO जनरेशन विथ ड्राइवर्स कम्प्लीट!"
           else
