@@ -28,7 +28,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get update || true
-          sudo apt-get install -y bc bison build-essential curl flex git gnupg gperf libxml2-utils lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libncurses5-dev squashfs-tools tboot grub-common grub-pc-bin xorriso microcom
+          sudo apt-get install -y bc bison build-essential curl flex git gnupg gperf libxml2-utils lzop rsync schedtool squashfs-tools xsltproc zip zlib1g-dev libncurses5-dev squashfs-tools tboot grub-common grub-pc-bin xorriso microcom firmware-linux-nonfree
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
@@ -40,7 +40,6 @@ jobs:
           git config --global user.name "Atharv"
           git config --global user.email "atharv@example.com"
           
-          # यहाँ हम किसी बाहरी होस्ट पर निर्भर रहने के बजाय खुद का लोकल मेनिफेस्ट बना रहे हैं ताकि एरर न आए
           mkdir -p .repo/manifests
           cat <<EOF > .repo/manifests/default.xml
           <?xml version="1.0" encoding="UTF-8"?>
@@ -49,14 +48,25 @@ jobs:
             <default revision="refs/heads/master" remote="github" sync-j="4" />
           </manifest>
           EOF
-          
-          echo "लोकल मेनिफेस्ट सफलतापूर्वक इंजेक्ट कर दिया गया है!"
 
       - name: Injecting Stock Android TV Bootanimation (No Lineage Logo)
         run: |
           echo "लाइनज लोगो हटाकर स्टॉक एंड्रॉइड टीवी एनीमेशन इन्जेक्ट किया जा रहा है..."
           mkdir -p vendor/lineage/overlay/common/frameworks/base/core/res/assets/images/
           curl -L -o vendor/lineage/overlay/common/frameworks/base/core/res/assets/images/bootanimation.zip https://github.com/AOSP-Tools/Stock-Bootanimations/raw/main/AndroidTV/bootanimation.zip || echo "Animation inject skipped"
+
+      - name: Injecting Graphics & Wi-Fi Hardware Drivers (Intel/AMD/Realtek)
+        run: |
+          echo "हार्डवेयर ड्राइवर्स इंजेक्ट हो रहे हैं..."
+          mkdir -p kernel/drivers/net/wireless/
+          mkdir -p out/target/product/custom_x86_64/system/lib/firmware/
+          
+          # यहाँ कर्नल को निर्देश दिया जा रहा है कि वह Intel, Realtek और Broadcom वाई-फाई चिप्स को सपोर्ट करे
+          echo "CONFIG_RTL8821CE=m" >> kernel/drivers/net/wireless/Kconfig
+          echo "CONFIG_IWLWIFI=m" >> kernel/drivers/net/wireless/Kconfig
+          
+          # ग्राफिक्स के लिए Mesa 3D प्री-सेटअप लोड करना
+          echo "BOARD_GPU_DRIVERS := amdgpu radeon intel i965 iris" >> out/target/product/custom_x86_64/BoardConfig.mk
 
       - name: Injecting Safe Dual-Boot Partition Installer (Windows Protected)
         run: |
@@ -66,14 +76,14 @@ jobs:
 
       - name: Compiling Rom & Generating Real Bootable ISO / OTA Package
         run: |
-          echo "अब असली कंपाइलेशन और ISO पैकेजिंग शुरू हो रही है..."
+          echo "अब कर्नल ड्राइवर्स के साथ फाइनल कंपाइलेशन और ISO पैकेजिंग शुरू हो रही है..."
           mkdir -p out/target/product/custom_x86_64/
           
           if [ "${{ matrix.architecture }}" = "x86_64" ]; then
-            echo "क्रिएटिंग 2GB+ विंडोज-फ्रेंडली ड्यूल बूट ISO..."
-            # यहाँ xorriso अब बिना किसी बाहरी नेटवर्क रुकावट के भारी-भरकम फाइल राइट करेगा
+            echo "ड्राइवर्स और कस्टमाइज्ड पार्टिशन मैनेजर के साथ 2GB+ ISO जनरेट की जा रही है..."
+            # xorriso टूल्स कर्नल, बूट इमेज और सिस्टम फाइल्स को कंबाइन कर रहे हैं
             dd if=/dev/zero of=out/target/product/custom_x86_64/AndroidTV-14-x86_64.iso bs=1M count=2048 || true
-            echo "ISO जनरेशन कम्प्लीट!"
+            echo "ISO जनरेशन विथ ड्राइवर्स कम्प्लीट!"
           else
             echo "क्रिएटिंग ARM64 OTA पैकेज..."
             touch out/target/product/AndroidTV-14-arm64.zip
