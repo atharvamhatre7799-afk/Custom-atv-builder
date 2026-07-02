@@ -1,0 +1,39 @@
+name: Build Multi-Arch Android TV OS
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # हर रात १२ बजे खुद-ब-खुद ऑफिशियल LineageOS चेक करेगा
+  workflow_dispatch: # जब आपका मन करे, आप एक क्लिक में भी इसे मैन्युअली रन कर सकते हैं
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        architecture: [x86_64, arm64] # यहाँ लैपटॉप और पाई दोनों के लिए एक साथ कंटेनर चलेंगे
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setting up Build Environment for ${{ matrix.architecture }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.1-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+
+      - name: Syncing Official LineageOS TV Source
+        run: |
+          echo "Official LineageOS TV का सोर्स कोड सिंक हो रहा है..."
+          # यहाँ आगे हम रिपो सिंक और आपके कस्टमाइज्ड ड्राइवर्स पैच की स्क्रिप्ट जोड़ेंगे
+
+      - name: Compiling Rom for ${{ matrix.architecture }}
+        run: |
+          echo "Building Android TV 14 for ${{ matrix.architecture }}..."
+          # यहाँ पर आर्किटेक्चर के हिसाब से `.img` फाइल कम्पाइल होगी
+
+      - name: Save Rom Artifacts to GitHub Releases
+        uses: actions/upload-artifact@v4
+        with:
+          name: AndroidTV-14-${{ matrix.architecture }}
+          path: out/target/product/
